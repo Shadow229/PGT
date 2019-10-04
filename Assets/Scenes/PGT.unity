@@ -150,10 +150,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a595247cba1ee5c4c892ee6851b8d592, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  OffsetX: 0
+  Seed: 0
+  OffsetX: 0.88
   OffsetY: 0
   OffsetZ: 0
-  Octaves: 6
+  Octaves: 8
+  NoiseScale: 4.2
+  NoiseWeight: 1.91
+  WeightMultiplier: 0
+  HardFloor: 3.45
+  HardFloorWeight: 5.17
   HurstExponent: 0.7
   Lacunarity: 1
   Persistence: 1
@@ -169,8 +175,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1137afffba51cb4b9a3a515e094db29, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  TerrainSize: {x: 10, y: 1, z: 10}
-  ISOValue: 100
+  TerrainSize: {x: 10, y: 10, z: 10}
+  ISOValue: 5
   MaxISO: 0
   MinISO: 0
   ISOVal: 0
