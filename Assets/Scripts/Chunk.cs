@@ -2,21 +2,22 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-
-public class TerrainCube : MonoBehaviour
+public class Chunk : MonoBehaviour
 {
-    public Vector3 Coord;
-    //public float Size;
-    public float NoiseVal;
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
     MeshCollider meshCollider;
 
+    public Dictionary<Vector3, TerrainCube> ExistingCubes;
+    public List<TerrainCube> Cubes;
 
+    [HideInInspector]
+    public Mesh mesh;
+    public Vector3Int Pos;
 
 
     public Material GetDefaultMaterial()
-    {    
+    {
         //assign filters and materials from a default cube
         GameObject primitive = GameObject.CreatePrimitive(PrimitiveType.Cube);
 
@@ -27,39 +28,20 @@ public class TerrainCube : MonoBehaviour
         return mat;
     }
 
-    public Mesh GetDefaultMeshFilter()
+
+
+    public void SetUp()
     {
-        //assign filters and materials from a default cube
-        GameObject primitive = GameObject.CreatePrimitive(PrimitiveType.Cube);
-
-        Mesh MF = primitive.GetComponent<MeshFilter>().sharedMesh;
-
-        DestroyImmediate(primitive);
-
-        return MF;
-    }
-
-
-    public void Init(float Size, Vector3 coord, Vector3 pos, float DensityVal)
-    {
-        Coord = coord;
-        this.transform.position = pos;
-        this.transform.localScale = Vector3.one * Size;
-        NoiseVal = DensityVal;
-    }
-
-        public void SetUp(float Size, Vector3 coord, Vector3 pos, float DensityVal)
-    {
-        Init(Size, coord, pos, DensityVal);
-
         meshFilter = GetComponent<MeshFilter>();
         meshRenderer = GetComponent<MeshRenderer>();
         meshCollider = GetComponent<MeshCollider>();
 
+        ExistingCubes = new Dictionary<Vector3, TerrainCube>();
+        Cubes = new List<TerrainCube>();
+
         if (meshFilter == null)
         {
             meshFilter = gameObject.AddComponent<MeshFilter>();
-            meshFilter.sharedMesh = GetDefaultMeshFilter();
         }
 
         if (meshRenderer == null)
@@ -71,7 +53,26 @@ public class TerrainCube : MonoBehaviour
         if (meshCollider == null)
         {
             meshCollider = gameObject.AddComponent<MeshCollider>();
+            meshCollider.convex = true;
         }
+
+
+        mesh = meshFilter.sharedMesh;
+        if (mesh == null)
+        {
+            mesh = new Mesh();
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            meshFilter.sharedMesh = mesh;
+        }
+
+        meshCollider.sharedMesh = mesh;
+        // force update
+        meshCollider.enabled = false;
+        meshCollider.enabled = true;
+
+
+      
+
 
     }
 
@@ -79,4 +80,5 @@ public class TerrainCube : MonoBehaviour
     {
         Destroy(this.gameObject);
     }
+
 }

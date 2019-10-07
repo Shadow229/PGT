@@ -16,7 +16,7 @@ public class NoiseGenerator : MonoBehaviour
     public float NoiseScale = 2.5f;
     public float NoiseWeight = 2f;
 
-    //public float FloorOffset;
+    public float FloorOffset;
     public float WeightMultiplier;
     //public bool CloseEdges;
     public float HardFloor;
@@ -29,21 +29,54 @@ public class NoiseGenerator : MonoBehaviour
     public float Lacunarity = 2f;
 
     public float Persistence = 1f;
-    
+
+    public bool settingsUpdated = false;
+
+    public System.Random rnd;
+    public float RndSeeded = 0f;
 
 
-    public float GenerateDensityValue(Vector3Int pos)
+
+    private void Start()
     {
-        var Rng = new System.Random(Seed);
+        //seed our random number early!
+        rnd = new System.Random(Seed);
+        RndSeeded = (float)rnd.NextDouble();
+    }
 
-        Vector3 SeededPos = new Vector3(pos.x * (float)Rng.NextDouble(), pos.y * (float)Rng.NextDouble(), pos.z * (float)Rng.NextDouble());
+    public float GenerateDensityValue(Vector3 pos)
+    {
+       var Rng = new System.Random(Seed);
+
+        Vector3 SeededPos = new Vector3(pos.x * RndSeeded, pos.y * RndSeeded, pos.z * RndSeeded);
 
         Vector3 Offset = new Vector3(OffsetX, OffsetY, OffsetZ);
-        Vector3 v = (Vector3)SeededPos + Offset;
+        Vector3 v = SeededPos + Offset;
 
         float c = FBM(v);
 
         return c;
+    }
+
+
+    public void GenerateDensityValue(Cube cube)
+    {
+        
+        for (int i = 0; i < 8; i++)
+        {
+            Vector3 pos = cube.CornerPos[i];
+   
+            Vector3 SeededPos = new Vector3(pos.x * RndSeeded, pos.y * RndSeeded, pos.z * RndSeeded);
+
+            Vector3 Offset = new Vector3(OffsetX, OffsetY, OffsetZ);
+            Vector3 v = SeededPos + Offset;
+
+            float c = FBM(v);
+
+            cube.CornerPos[i].w = c;
+        //return c;
+        
+        }
     }
 
 
@@ -68,14 +101,14 @@ public class NoiseGenerator : MonoBehaviour
             Frequency *= Lacunarity;
         }
 
-        float fv = noise * NoiseWeight;
+        float c = -(vec.y + FloorOffset) + noise * NoiseWeight;
 
         if (vec.y < HardFloor)
         {
-            fv += (HardFloorWeight / 100);
+            c += HardFloorWeight;
         }
 
-        return fv;
+        return c;
     }
 
 
@@ -102,4 +135,48 @@ public class NoiseGenerator : MonoBehaviour
         return ABC / 6f;
     }
 
+
+    public void CalculateNormal(Triangle tri)
+    {
+        Vector3 Normal = Vector3.zero;
+
+        Vector3 U = tri.point[1] - tri.point[0];
+        Vector3 V = tri.point[2] - tri.point[0];
+
+        Normal.x = (U.y * V.z) - (U.z * V.y);
+        Normal.y = (U.z * V.x) - (U.x * V.z);
+        Normal.z = (U.x * V.y) - (U.y * V.x);
+
+        //flip it
+        tri.normal = Vector3.Normalize(Normal);
+    }
+
+    public void ReverseNormals(Mesh mesh)
+    {
+        Vector3[] normals = mesh.normals;
+        for (int i = 0; i < normals.Length; i++)
+
+            normals[i] = -normals[i];
+        mesh.normals = normals;
+
+        for (int m = 0; m < mesh.subMeshCount; m++)
+        {
+            int[] triangles = mesh.GetTriangles(m);
+            for (int i = 0; i < triangles.Length; i += 3)
+            {
+                int temp = triangles[i + 0];
+                triangles[i + 0] = triangles[i + 1];
+                triangles[i + 1] = temp;
+            }
+
+            mesh.SetTriangles(triangles, m);
+        }
+    }
+    
+
+
+    void OnValidate()
+    {
+        settingsUpdated = true;
+    }
 }
