@@ -151,7 +151,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Seed: 0
-  OffsetX: 0
+  OffsetX: 0.08
   OffsetY: -0.3
   OffsetZ: 0
   Octaves: 5
@@ -165,6 +165,7 @@ MonoBehaviour:
   Lacunarity: 2
   Persistence: 2
   settingsUpdated: 1
+  RndSeeded: 0
 --- !u!114 &817408919
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -178,11 +179,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   FixedMapSize: 1
-  NumOfChunks: {x: 1, y: 1, z: 1}
-  ChunkSize: 2
+  NumOfChunks: {x: 2, y: 2, z: 2}
+  ChunkSize: 20
   showChunks: 1
   Voxelated: 0
-  VoxelsPerAxis: 2
+  VoxelsPerAxis: 1
   ISOValue: 15.1
   MaxISO: 16.320868
   MinISO: 13.85733
@@ -294,7 +295,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1140868559}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.3573785, y: 7.78, z: 0.17531793}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 1398530525}
