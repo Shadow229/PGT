@@ -47,33 +47,35 @@ public class Chunk : MonoBehaviour
         if (meshRenderer == null)
         {
             meshRenderer = gameObject.AddComponent<MeshRenderer>();
-            meshRenderer.sharedMaterial = GetDefaultMaterial();
         }
 
         if (meshCollider == null)
         {
             meshCollider = gameObject.AddComponent<MeshCollider>();
-            meshCollider.convex = true;
         }
-
 
         mesh = meshFilter.sharedMesh;
         if (mesh == null)
         {
-            mesh = new Mesh();
-            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh = new Mesh
+            {
+                indexFormat = UnityEngine.Rendering.IndexFormat.UInt32
+            };
+
             meshFilter.sharedMesh = mesh;
         }
 
-        meshCollider.sharedMesh = mesh;
+        if (meshCollider.sharedMesh == null)
+        {
+            meshCollider.sharedMesh = mesh;
+        }
+
         // force update
         meshCollider.enabled = false;
         meshCollider.enabled = true;
 
-
-      
-
-
+         
+        meshRenderer.material = GetDefaultMaterial();
     }
 
     public void Destroy()

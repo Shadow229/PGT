@@ -17,16 +17,33 @@ public struct Cube
 
 public struct Triangle
 {
-    public Vector3[] point;
-    public Vector3 normal;
+    //public Vector3[] point;
+#pragma warning disable 649 // disable unassigned variable warning
+    public Vector3 a;
+    public Vector3 b;
+    public Vector3 c;
+
+   // public Vector3 normal;
 
     public void Init()
     {
-        point = new Vector3[3];
-
+        //point = new Vector3[3];
     }
-
-
+    public Vector3 this[int i]
+    {
+        get
+        {
+            switch (i)
+            {
+                case 0:
+                    return a;
+                case 1:
+                    return b;
+                default:
+                    return c;
+            }
+        }
+    }
 };
 
 public class MarchingCubes : MonoBehaviour
@@ -120,17 +137,19 @@ public class MarchingCubes : MonoBehaviour
         int ntriang = 0;
         for (int i = 0; Lookup.TriTable[index,i] != -1; i += 3)
         {
-            Triangle triangle = new Triangle();
-            triangle.Init();
-            triangle.point[0] = vertList[Lookup.TriTable[index,i]];
-            triangle.point[1] = vertList[Lookup.TriTable[index, i + 1]];
-            triangle.point[2] = vertList[Lookup.TriTable[index, i + 2]];
+            Triangle triangle = new Triangle
+            {
+                // triangle.Init();
+                a = vertList[Lookup.TriTable[index, i]],
+                b = vertList[Lookup.TriTable[index, i + 1]],
+                c = vertList[Lookup.TriTable[index, i + 2]]
+            };
             ntriang++;
 
             nG.CalculateNormal(triangle);
 
             //add the triangle to our list
-            if (triangle.point[0] != null)
+            if (triangle.a != null)
             { 
                 tG.tris.Add(triangle);            
             }
@@ -157,5 +176,21 @@ public class MarchingCubes : MonoBehaviour
         }
 
 
+    }
+
+
+    //Function to update marching cubes triangles on the GPU
+    public static void UpdateTerrainGPU(ComputeShader mcShader, ComputeBuffer voxelBuffer, ComputeBuffer triangleBuffer, int VoxelsPerAxis, float ISOValue)
+    {
+        int kernel = mcShader.FindKernel("MarchCube");
+        int MaxThreads = Mathf.CeilToInt(VoxelsPerAxis / 8);
+
+        triangleBuffer.SetCounterValue(0);
+        mcShader.SetBuffer(kernel, "voxelPoints", voxelBuffer);
+        mcShader.SetBuffer(kernel, "triangles", triangleBuffer);
+        mcShader.SetInt("voxelsPerAxis", VoxelsPerAxis);
+        mcShader.SetFloat("ISOValue", ISOValue);
+
+        mcShader.Dispatch(kernel, MaxThreads, MaxThreads, MaxThreads);
     }
 }

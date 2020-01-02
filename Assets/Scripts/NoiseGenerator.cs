@@ -6,11 +6,11 @@ using UnityEngine;
 //[ExecuteInEditMode]
 public class NoiseGenerator : MonoBehaviour
 {
-
+    public ComputeShader DensityShader;
 
     public int Seed = 0;
     // Noise settings
-    public float OffsetX, OffsetY, OffsetZ;
+    public Vector3 Offset;
     public int Octaves;
 
     public float NoiseScale = 2.5f;
@@ -46,11 +46,10 @@ public class NoiseGenerator : MonoBehaviour
 
     public float GenerateDensityValue(Vector3 pos)
     {
-       var Rng = new System.Random(Seed);
+        //var Rng = new System.Random(Seed);
 
         Vector3 SeededPos = new Vector3(pos.x * RndSeeded, pos.y * RndSeeded, pos.z * RndSeeded);
 
-        Vector3 Offset = new Vector3(OffsetX, OffsetY, OffsetZ);
         Vector3 v = SeededPos + Offset;
 
         float c = FBM(v);
@@ -68,14 +67,11 @@ public class NoiseGenerator : MonoBehaviour
    
             Vector3 SeededPos = new Vector3(pos.x * RndSeeded, pos.y * RndSeeded, pos.z * RndSeeded);
 
-            Vector3 Offset = new Vector3(OffsetX, OffsetY, OffsetZ);
             Vector3 v = SeededPos + Offset;
 
             float c = FBM(v);
 
             cube.CornerPos[i].w = c;
-        //return c;
-        
         }
     }
 
@@ -140,15 +136,15 @@ public class NoiseGenerator : MonoBehaviour
     {
         Vector3 Normal = Vector3.zero;
 
-        Vector3 U = tri.point[1] - tri.point[0];
-        Vector3 V = tri.point[2] - tri.point[0];
+        Vector3 U = tri.b - tri.a;
+        Vector3 V = tri.c - tri.a;
 
         Normal.x = (U.y * V.z) - (U.z * V.y);
         Normal.y = (U.z * V.x) - (U.x * V.z);
         Normal.z = (U.x * V.y) - (U.y * V.x);
 
         //flip it
-        tri.normal = Vector3.Normalize(Normal);
+        //tri.normal = Vector3.Normalize(Normal);
     }
 
     public void ReverseNormals(Mesh mesh)
@@ -173,6 +169,43 @@ public class NoiseGenerator : MonoBehaviour
         }
     }
     
+
+    //generate funtion for GPU calculated noise from the compute shader
+    public void Generate(ComputeBuffer voxelBuffer, int voxelsPerAxis, float chunkSize, Vector3 worldSize, Vector3 chunkCentre, float voxelSpacing)
+    {
+        int kernel = DensityShader.FindKernel("NoiseDensity");
+
+        //return value
+        DensityShader.SetBuffer(0, "voxelPoints", voxelBuffer);
+
+        //set all compute shader values
+        DensityShader.SetInt("VoxelsPerAxis", voxelsPerAxis);
+        DensityShader.SetVector("chunkCentre", new Vector4(chunkCentre.x, chunkCentre.y, chunkCentre.z));
+        DensityShader.SetFloat("voxelSpacing", voxelSpacing);
+        DensityShader.SetFloat("chunkSize", chunkSize);
+        DensityShader.SetVector("worldSize", worldSize);
+
+        //Noise Variables
+        DensityShader.SetFloat("noiseScale", NoiseScale);
+        DensityShader.SetFloat("noiseWeight", NoiseWeight);
+        DensityShader.SetVector("offset", Offset);
+
+        DensityShader.SetFloat("floorOffset", FloorOffset);
+        DensityShader.SetFloat("weightMultiplier", WeightMultiplier);
+        DensityShader.SetFloat("hardFloor", HardFloor);
+        DensityShader.SetFloat("hardFloorWeight", HardFloorWeight);
+
+        DensityShader.SetInt("octaves", Mathf.Max(1, Octaves));
+        DensityShader.SetFloat("lacunarity", Lacunarity);
+        DensityShader.SetFloat("persistence", Persistence);
+        DensityShader.SetFloat("hurstExponent", HurstExponent);
+
+
+        int MaxThreads = Mathf.CeilToInt(voxelsPerAxis / 8);
+
+        DensityShader.Dispatch(kernel, MaxThreads, MaxThreads, MaxThreads);
+
+    }
 
 
     void OnValidate()

@@ -6,6 +6,12 @@ using UnityEngine;
 //[ExecuteInEditMode]
 public class TerrainGeneration : MonoBehaviour
 {
+    [Header("GPU Utilisation")]
+    public bool UseGPU;
+
+    [ConditionalHide(nameof(UseGPU), true)]
+    public ComputeShader MarchingCubesCompute;
+
     [Header("Terrain Settings")]
     public bool FixedMapSize;
 
@@ -39,8 +45,6 @@ public class TerrainGeneration : MonoBehaviour
     //keep track of our chunks
     public Dictionary<Vector3Int, Chunk> ExistingChunks;
 
-   
-
     [HideInInspector]
     public GameObject ChunkHolder;
 
@@ -50,12 +54,15 @@ public class TerrainGeneration : MonoBehaviour
 
     public int NumTris = 0;
 
-
     public List<Triangle> tris;
 
+    //Computer Buffers
+    ComputeBuffer triangleBuffer;
+    ComputeBuffer voxelBuffer;
+    ComputeBuffer triCountBuffer;
 
     //debugging variables
- 
+
     public int cubeCount;
     public Cube cubeGizmo;
 
@@ -91,7 +98,17 @@ public class TerrainGeneration : MonoBehaviour
         List<Chunk> Chunks = (this.Chunks == null) ? new List<Chunk>(FindObjectsOfType<Chunk>()) : this.Chunks;
         foreach (var chunk in Chunks)
         {
-            UpdateTerrain(chunk);
+            if (UseGPU)
+            {
+                //compute shader terrain update
+                UpdateTerrainGPU(chunk);
+            }
+            else
+            {
+                //CPU terrain update
+                UpdateTerrain(chunk);
+            }
+
             UpdateCubeCount(chunk);
         }
     }
@@ -120,6 +137,7 @@ public class TerrainGeneration : MonoBehaviour
     }
 
 
+    //updates/destroys and creates new chunks if required
     void CreateChunks()
     {
         Chunks = new List<Chunk>();
@@ -155,11 +173,8 @@ public class TerrainGeneration : MonoBehaviour
                         NewChunk.SetUp();
                         Chunks.Add(NewChunk);
                     }
-
                 }
-
             }
-
         }
 
         // Delete any remaining old terrain
@@ -215,6 +230,68 @@ public class TerrainGeneration : MonoBehaviour
     }
 
 
+    //updating the terrain with compute shaders on the GPU
+    public void UpdateTerrainGPU(Chunk chunk)
+    {
+        //create buffers for GPU call
+        CreateBuffers();
+
+        float voxelSpacing = ChunkSize / (VoxelsPerAxis - 1);
+        Vector3Int coord = chunk.Pos;
+        Vector3 chunkCentre = GetChunkCentre(coord);
+        //get world size
+        Vector3 worldSize = new Vector3(NumOfChunks.x, NumOfChunks.y, NumOfChunks.z) * ChunkSize;
+
+        //generate the noise
+        noiseGenerator.Generate(voxelBuffer, VoxelsPerAxis, ChunkSize, worldSize, chunkCentre, voxelSpacing);
+        //generate the mesh points
+       // MarchingCubes.UpdateTerrainGPU(MarchingCubesCompute, voxelBuffer, triangleBuffer, VoxelsPerAxis, ISOValue);
+
+        int kernel = MarchingCubesCompute.FindKernel("CubeMarch");
+        int MaxThreads = Mathf.CeilToInt(VoxelsPerAxis / 8);
+
+        triangleBuffer.SetCounterValue(0);
+        MarchingCubesCompute.SetBuffer(kernel, "voxelPoints", voxelBuffer);
+        MarchingCubesCompute.SetBuffer(kernel, "triangles", triangleBuffer);
+        MarchingCubesCompute.SetInt("voxelsPerAxis", VoxelsPerAxis);
+        MarchingCubesCompute.SetFloat("ISOValue", ISOValue);
+
+        MarchingCubesCompute.Dispatch(kernel, MaxThreads, MaxThreads, MaxThreads);
+
+
+        //update the mesh with the populated triangle buffer
+        // Get number of triangles in the triangle buffer
+        ComputeBuffer.CopyCount(triangleBuffer, triCountBuffer, 0);
+        int[] triCountArray = { 0 };
+        triCountBuffer.GetData(triCountArray);
+        int numTris = triCountArray[0];
+
+        // Get triangle data from shader
+        Triangle[] tris = new Triangle[numTris];
+        triangleBuffer.GetData(tris, 0, 0, numTris);
+
+        Mesh mesh = chunk.mesh;
+        mesh.Clear();
+
+        var vertices = new Vector3[numTris * 3];
+        var meshTriangles = new int[numTris * 3];
+
+        for (int i = 0; i < numTris; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                meshTriangles[i * 3 + j] = i * 3 + j;
+                vertices[i * 3 + j] = tris[i][j];
+            }
+        }
+        mesh.vertices = vertices;
+        mesh.triangles = meshTriangles;
+
+        mesh.RecalculateNormals();
+    }
+
+
+    //updateing the terrain on the CPU
     public void UpdateTerrain(Chunk chunk)
     {
         float fCS = ChunkSize * 1.0f;
@@ -223,8 +300,18 @@ public class TerrainGeneration : MonoBehaviour
         MaxISO = float.MinValue;
         MinISO = float.MaxValue;
 
-        ///wipe the cubes if we need to recalc the VPA
-        if (VPACalc != VoxelsPerAxis) {TerrainCubeWipe(chunk);}
+        //clear old data if style has been switched
+        if (Voxelated)
+        {
+            ///clear any old mesh from non voxelated terrain
+            ClearChunkMesh(chunk);
+            ///wipe the cubes if we need to recalc the VPA
+            if (VPACalc != VoxelsPerAxis) {TerrainCubeWipe(chunk);}
+        }
+        else if (chunk.Cubes.Count > 0)
+        {
+            TerrainCubeWipe(chunk);
+        }
 
         float pointSpacing = fCS / fNV;
 
@@ -249,9 +336,7 @@ public class TerrainGeneration : MonoBehaviour
                         UpdateCubes(voxCoord, VoxPoint, pointSpacing, chunk);
                     }
                     else //create terrain info
-                    {
-                        //clear the cubes
-                        if (chunk.Cubes.Count > 0) { TerrainCubeWipe(chunk); }
+                    {                        
                         //create a terrain mesh
                         MarchingCubes.UpdateTerrain(chunk, VoxPoint);
                     }
@@ -262,6 +347,11 @@ public class TerrainGeneration : MonoBehaviour
         if (!Voxelated) DrawTerrainMesh(chunk);
     }
 
+
+    void ClearChunkMesh(Chunk chunk)
+    {
+        chunk.mesh.Clear();
+    }
 
     void DrawTerrainMesh(Chunk chunk)
     {
@@ -280,7 +370,7 @@ public class TerrainGeneration : MonoBehaviour
             for (int j = 0; j < 3; j++)
             {
                 meshTriangles[i * 3 + j] = i * 3 + j;
-                vertices[i * 3 + j] = tris[i].point[j];
+                vertices[i * 3 + j] = tris[i][j];
             }
         }
         mesh.vertices = vertices;
@@ -289,6 +379,8 @@ public class TerrainGeneration : MonoBehaviour
 
         noiseGenerator.ReverseNormals(mesh);
         mesh.RecalculateNormals();
+        //rerun the setup to recalc collisions
+        chunk.SetUp();
 
     }
 
@@ -360,6 +452,39 @@ public class TerrainGeneration : MonoBehaviour
 
 
 
+    void CreateBuffers()
+    {
+        int numPoints = VoxelsPerAxis * VoxelsPerAxis * VoxelsPerAxis;
+        int numVoxelsPerAxis = VoxelsPerAxis - 1;
+        int numVoxels = numVoxelsPerAxis * numVoxelsPerAxis * numVoxelsPerAxis;
+        int maxTriangleCount = numVoxels * 5;
+
+        // Always create buffers in editor (since buffers are released immediately to prevent memory leak)
+        // Otherwise, only create if null or if size has changed
+        if (!Application.isPlaying || (voxelBuffer == null || numPoints != voxelBuffer.count))
+        {
+            if (Application.isPlaying)
+            {
+                ReleaseBuffers();
+            }
+            triangleBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3, ComputeBufferType.Append);
+            voxelBuffer = new ComputeBuffer(numPoints, sizeof(float) * 4);
+            triCountBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
+
+        }
+    }
+
+    void ReleaseBuffers()
+    {
+        if (triangleBuffer != null)
+        {
+            triangleBuffer.Release();
+            voxelBuffer.Release();
+            triCountBuffer.Release();
+        }
+    }
+
+
     void OnDrawGizmos()
     {
         if (showChunks)
@@ -387,12 +512,4 @@ public class TerrainGeneration : MonoBehaviour
         //    Gizmos.DrawSphere(pos, 0.1f);
         //}
     }
-
-
-
-
-
-
-
-
 }

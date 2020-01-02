@@ -1,8 +1,8 @@
-﻿using System.Collections;
+﻿// Values from http://paulbourke.net/geometry/polygonise/
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
-
 
 
 public static class Lookup// : MonoBehaviour
