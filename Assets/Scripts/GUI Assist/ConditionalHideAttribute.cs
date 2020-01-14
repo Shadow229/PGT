@@ -10,6 +10,8 @@ public class ConditionalHideAttribute : PropertyAttribute
     public string ConditionalSourceField = "";
     //TRUE = Hide in inspector / FALSE = Disable in inspector 
     public bool HideInInspector = false;
+    //Reverse the condition
+    public bool ReverseCondition = false;
 
     public ConditionalHideAttribute(string conditionalSourceField)
     {
@@ -21,5 +23,12 @@ public class ConditionalHideAttribute : PropertyAttribute
     {
         this.ConditionalSourceField = conditionalSourceField;
         this.HideInInspector = hideInInspector;
+    }
+
+    public ConditionalHideAttribute(string conditionalSourceField, bool ReverseConditional, bool hideInInspector)
+    {
+        this.ConditionalSourceField = conditionalSourceField;
+        this.HideInInspector = hideInInspector;
+        this.ReverseCondition = ReverseConditional;
     }
 }

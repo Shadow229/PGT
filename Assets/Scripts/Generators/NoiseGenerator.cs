@@ -3,14 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
+
 //[ExecuteInEditMode]
 public class NoiseGenerator : MonoBehaviour
 {
     public ComputeShader DensityShader;
 
-    public int Seed = 0;
+    [Header("Noise Values")]
     // Noise settings
     public Vector3 Offset;
+    [Range(1,8)]
     public int Octaves;
 
     public float NoiseScale = 2.5f;
@@ -18,86 +21,77 @@ public class NoiseGenerator : MonoBehaviour
 
     public float FloorOffset;
     public float WeightMultiplier;
-    //public bool CloseEdges;
     public float HardFloor;
     public float HardFloorWeight;
 
-    [Range(0f, 1f)]
-    public float HurstExponent = 0.5f;
-
-    [Range(1.9f, 2.1f)]
+    [Range(1f, 4f)]
     public float Lacunarity = 2f;
 
+    [Range(0f, 1f)]
     public float Persistence = 1f;
 
+    [HideInInspector]
     public bool settingsUpdated = false;
-
+    [HideInInspector]
     public System.Random rnd;
+    [HideInInspector]
     public float RndSeeded = 0f;
+    [HideInInspector]
+    public int Seed = 0;
 
 
-
-    private void Start()
-    {
-        //seed our random number early!
-        rnd = new System.Random(Seed);
-        RndSeeded = (float)rnd.NextDouble();
-    }
-
+    //density value for a single point if style is voxelated
     public float GenerateDensityValue(Vector3 pos)
     {
-        //var Rng = new System.Random(Seed);
-
-        Vector3 SeededPos = new Vector3(pos.x * RndSeeded, pos.y * RndSeeded, pos.z * RndSeeded);
-
-        Vector3 v = SeededPos + Offset;
-
-        float c = FBM(v);
+        rnd = new System.Random(Seed);
+        RndSeeded = (float)rnd.NextDouble();
+        float c = FBM(pos);
 
         return c;
     }
 
 
+    //density values for a cube at all given points
     public void GenerateDensityValue(Cube cube)
     {
-        
+        rnd = new System.Random(Seed);
+        RndSeeded = (float)rnd.NextDouble();
+
         for (int i = 0; i < 8; i++)
         {
             Vector3 pos = cube.CornerPos[i];
-   
-            Vector3 SeededPos = new Vector3(pos.x * RndSeeded, pos.y * RndSeeded, pos.z * RndSeeded);
 
-            Vector3 v = SeededPos + Offset;
-
-            float c = FBM(v);
+            float c = FBM(pos);
 
             cube.CornerPos[i].w = c;
         }
     }
 
-
+    //fractal brownian motion to create more realistic terrain
     public float FBM(Vector3 vec)
     {
-        float Gain = (float)Math.Pow(2.0, -HurstExponent);
-        float Frequency = NoiseScale;
-        float Amplitude = Persistence;
+        float Frequency = NoiseScale / 100f;
+        float Amplitude = 1;
         float weight = 1f;
         float noise = 0;
+       // float offsetRange = 1000;
 
         for (int i = 0; i < Octaves; i++)
         {
-            float f = Perlin3D(vec * Frequency);
+            //Passing in a seeded offset at octave level causes mesh issues not seen on the GPU - removed from both functions to match terrains up
+            ///Vector3 OctaveOffset = new Vector3((float)rnd.NextDouble() * 2 - 1, (float)rnd.NextDouble() * 2 - 1, (float)rnd.NextDouble() * 2 - 1) * 1000;
+
+            float f = PerlinNoise.CNoise(vec * Frequency + Offset);
             float v = 1 - Mathf.Abs(f);
             v *= v;
             v *= weight;
-
             weight = Mathf.Max(Mathf.Min(v * WeightMultiplier, 1), 0);
             noise += v * Amplitude;
-            Amplitude *= Gain;
+            Amplitude *= Persistence;
             Frequency *= Lacunarity;
         }
 
-        float c = -(vec.y + FloorOffset) + noise * NoiseWeight;
+        float c = -(vec.y + FloorOffset) + (noise * NoiseWeight);
 
         if (vec.y < HardFloor)
         {
@@ -107,46 +101,7 @@ public class NoiseGenerator : MonoBehaviour
         return c;
     }
 
-
-    public float Perlin3D(Vector3 vec)
-    {
-        float d = .01f;
-
-        float x, y, z;
-        x = vec.x * d;
-        z = vec.z * d;
-        y = vec.y * d;
-
-        //get all permutations of noise
-        float AB = Mathf.PerlinNoise(x, y);
-        float BC = Mathf.PerlinNoise(y, z);
-        float AC = Mathf.PerlinNoise(x, z);
-        float BA = Mathf.PerlinNoise(y, x);
-        float CB = Mathf.PerlinNoise(z, y);
-        float CA = Mathf.PerlinNoise(z, x);
-
-        //return the average of all noise permutations
-        float ABC = AB + BC + AC + BA + CB + CA;
-
-        return ABC / 6f;
-    }
-
-
-    public void CalculateNormal(Triangle tri)
-    {
-        Vector3 Normal = Vector3.zero;
-
-        Vector3 U = tri.b - tri.a;
-        Vector3 V = tri.c - tri.a;
-
-        Normal.x = (U.y * V.z) - (U.z * V.y);
-        Normal.y = (U.z * V.x) - (U.x * V.z);
-        Normal.z = (U.x * V.y) - (U.y * V.x);
-
-        //flip it
-        //tri.normal = Vector3.Normalize(Normal);
-    }
-
+    //function to reverse normals on a mesh
     public void ReverseNormals(Mesh mesh)
     {
         Vector3[] normals = mesh.normals;
@@ -171,21 +126,41 @@ public class NoiseGenerator : MonoBehaviour
     
 
     //generate funtion for GPU calculated noise from the compute shader
-    public void Generate(ComputeBuffer voxelBuffer, int voxelsPerAxis, float chunkSize, Vector3 worldSize, Vector3 chunkCentre, float voxelSpacing)
+    public ComputeBuffer Generate(ComputeBuffer voxelBuffer, int voxelsPerAxis, float chunkSize, Vector3 worldSize, Vector3 chunkCentre, float voxelSpacing)
     {
+        //find the compute shader kernel
         int kernel = DensityShader.FindKernel("NoiseDensity");
+
+        //calc seeded random value
+        rnd = new System.Random(Seed);
+
+        //required variables
+        int PointsPerAxis = voxelsPerAxis + 1;
+        var OctaveOffsets = new Vector3[Octaves];
+
+        //get random offsets through number of octaves
+        for (int i = 0; i < Octaves; i++)
+        {
+            //random between -1 and 1 * 1000 for reasonable offset value
+            OctaveOffsets[i] = new Vector3((float)rnd.NextDouble() *2 - 1, (float)rnd.NextDouble() * 2 - 1, (float)rnd.NextDouble() * 2 - 1) * 1000;
+        }
+
+        //set random offsets to a buffer to be used by the noise shader
+        ComputeBuffer OctaveOffsetsBuffer = new ComputeBuffer(OctaveOffsets.Length, sizeof(float) * 3);
+        OctaveOffsetsBuffer.SetData(OctaveOffsets);
 
         //return value
         DensityShader.SetBuffer(0, "voxelPoints", voxelBuffer);
+        DensityShader.SetBuffer(0, "octaveOffsets", OctaveOffsetsBuffer);
 
         //set all compute shader values
-        DensityShader.SetInt("VoxelsPerAxis", voxelsPerAxis);
+        DensityShader.SetInt("PointsPerAxis", PointsPerAxis);
         DensityShader.SetVector("chunkCentre", new Vector4(chunkCentre.x, chunkCentre.y, chunkCentre.z));
         DensityShader.SetFloat("voxelSpacing", voxelSpacing);
         DensityShader.SetFloat("chunkSize", chunkSize);
         DensityShader.SetVector("worldSize", worldSize);
 
-        //Noise Variables
+        //set all remaining Noise Variables
         DensityShader.SetFloat("noiseScale", NoiseScale);
         DensityShader.SetFloat("noiseWeight", NoiseWeight);
         DensityShader.SetVector("offset", Offset);
@@ -198,12 +173,17 @@ public class NoiseGenerator : MonoBehaviour
         DensityShader.SetInt("octaves", Mathf.Max(1, Octaves));
         DensityShader.SetFloat("lacunarity", Lacunarity);
         DensityShader.SetFloat("persistence", Persistence);
-        DensityShader.SetFloat("hurstExponent", HurstExponent);
 
+        int MaxThreads = Mathf.CeilToInt(PointsPerAxis / (float)8);
 
-        int MaxThreads = Mathf.CeilToInt(voxelsPerAxis / 8);
-
+        //dispatch the shader to run
         DensityShader.Dispatch(kernel, MaxThreads, MaxThreads, MaxThreads);
+
+
+        //immediatly release the offsets buffer
+        OctaveOffsetsBuffer.Release();
+
+        return voxelBuffer;
 
     }
 

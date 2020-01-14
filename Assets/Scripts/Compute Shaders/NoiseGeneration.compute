@@ -1,14 +1,18 @@
 ﻿// Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel NoiseDensity
 
+
 //includes
-#include "Assets/Scripts/Include/Noise.compute"
+#include "Assets/Scripts/Include/SimplexNoise.compute"
+
 
 // Noise settings
-//StructuredBuffer<float3> offsets;
+int seed;
+StructuredBuffer<float3> octaveOffsets;
 RWStructuredBuffer<float4> voxelPoints;
-uint VoxelsPerAxis;
+uint PointsPerAxis;
 float3 chunkCentre;
+float3 worldSize;
 float voxelSpacing;
 float chunkSize;
 float3 offset;
@@ -16,38 +20,40 @@ float3 offset;
 int octaves;
 float lacunarity;
 float persistence;
-float hurstExponent;
 float noiseScale;
 float noiseWeight;
 float floorOffset;
 float weightMultiplier;
-//bool closeEdges;
+bool closedEdges;
 float hardFloor;
 float hardFloorWeight;
 
 
 //helper function
 int indexFromCoord(uint x, uint y, uint z) {
-	return z * VoxelsPerAxis * VoxelsPerAxis + y * VoxelsPerAxis + x;
+	return z * PointsPerAxis * PointsPerAxis + y * PointsPerAxis + x;
 }
 
 [numthreads(8,8,8)]
 void NoiseDensity(uint3 id : SV_DispatchThreadID)
 {
-	if (id.x >= VoxelsPerAxis || id.y >= VoxelsPerAxis || id.z >= VoxelsPerAxis) {
+	if (id.x >= PointsPerAxis || id.y >= PointsPerAxis || id.z >= PointsPerAxis)
+	{
 		return;
 	}
 
 	float3 pos = chunkCentre + id * voxelSpacing - chunkSize / 2;
 	float offsetNoise = 0;
 
-	float noise = 0;
-
+	//FBM
 	float frequency = noiseScale / 100;
 	float amplitude = 1;
 	float weight = 1;
-	for (int j = 0; j < octaves; j++) {
-		float n = snoise(pos * frequency + offset);
+	float noise = 0;
+
+	for (int j = 0; j < octaves; j++) 
+	{
+		float n = cnoise(pos* frequency + offset);// +octaveOffsets[j] + offset);
 		float v = 1 - abs(n);
 		v = v * v;
 		v *= weight;
@@ -57,18 +63,12 @@ void NoiseDensity(uint3 id : SV_DispatchThreadID)
 		frequency *= lacunarity;
 	}
 
-	float finalVal = -(pos.y + floorOffset) + noise * noiseWeight;
+	float finalVal = -(pos.y + floorOffset) + (noise * noiseWeight);
 
-	if (pos.y < hardFloor) {
+	if (pos.y < hardFloor) 
+	{
 		finalVal += hardFloorWeight;
 	}
-
-	/*if (closeEdges) {
-		float3 edgeOffset = abs(pos * 2) - worldSize + spacing / 2;
-		float edgeWeight = saturate(sign(max(max(edgeOffset.x, edgeOffset.y), edgeOffset.z)));
-		finalVal = finalVal * (1 - edgeWeight) - 100 * edgeWeight;
-
-	}*/
 
 	int index = indexFromCoord(id.x, id.y, id.z);
 	voxelPoints[index] = float4(pos, finalVal);

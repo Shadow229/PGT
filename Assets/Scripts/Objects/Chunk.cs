@@ -15,6 +15,9 @@ public class Chunk : MonoBehaviour
     public Mesh mesh;
     public Vector3Int Pos;
 
+    [HideInInspector]
+    public int VPA = 0;
+
 
     public Material GetDefaultMaterial()
     {
@@ -29,8 +32,8 @@ public class Chunk : MonoBehaviour
     }
 
 
-
-    public void SetUp()
+    //set up a chunk with the relevent mesh components
+    public void SetUp(bool Collisions, Material material = null)
     {
         meshFilter = GetComponent<MeshFilter>();
         meshRenderer = GetComponent<MeshRenderer>();
@@ -65,22 +68,36 @@ public class Chunk : MonoBehaviour
             meshFilter.sharedMesh = mesh;
         }
 
-        if (meshCollider.sharedMesh == null)
+        if (Collisions)
         {
-            meshCollider.sharedMesh = mesh;
+            if (meshCollider.sharedMesh == null)
+            {
+                meshCollider.sharedMesh = mesh;
+            }
         }
+        else
+        {
+            meshCollider.sharedMesh = null;
+        }
+         
 
         // force update
         meshCollider.enabled = false;
         meshCollider.enabled = true;
 
-         
-        meshRenderer.material = GetDefaultMaterial();
+        if (material == null)
+        {
+            meshRenderer.material = GetDefaultMaterial();
+        }
+        else
+        {
+            meshRenderer.material = material;
+        }
     }
 
     public void Destroy()
     {
-        Destroy(this.gameObject);
+        DestroyImmediate(this.gameObject);
     }
 
 }

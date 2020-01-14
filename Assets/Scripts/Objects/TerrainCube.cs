@@ -14,7 +14,6 @@ public class TerrainCube : MonoBehaviour
 
 
 
-
     public Material GetDefaultMaterial()
     {    
         //assign filters and materials from a default cube
@@ -77,6 +76,6 @@ public class TerrainCube : MonoBehaviour
 
     public void Destroy()
     {
-        Destroy(this.gameObject);
+        Destroy(gameObject);
     }
 }
