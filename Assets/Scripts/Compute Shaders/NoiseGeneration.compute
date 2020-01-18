@@ -27,6 +27,7 @@ float weightMultiplier;
 bool closedEdges;
 float hardFloor;
 float hardFloorWeight;
+int noiseType;
 
 
 //helper function
@@ -53,7 +54,17 @@ void NoiseDensity(uint3 id : SV_DispatchThreadID)
 
 	for (int j = 0; j < octaves; j++) 
 	{
-		float n = cnoise(pos* frequency + offset);// +octaveOffsets[j] + offset);
+		float n = 0;
+		//switch to show perlin vs simplex
+		if (noiseType == 0)
+		{
+			n = cnoise(pos* frequency + offset);// +octaveOffsets[j] + offset);
+		}
+		else
+		{
+			n = snoise(pos * frequency + offset);			
+		}
+
 		float v = 1 - abs(n);
 		v = v * v;
 		v *= weight;

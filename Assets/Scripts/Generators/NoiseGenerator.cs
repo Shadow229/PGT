@@ -126,7 +126,7 @@ public class NoiseGenerator : MonoBehaviour
     
 
     //generate funtion for GPU calculated noise from the compute shader
-    public ComputeBuffer Generate(ComputeBuffer voxelBuffer, int voxelsPerAxis, float chunkSize, Vector3 worldSize, Vector3 chunkCentre, float voxelSpacing)
+    public ComputeBuffer Generate(ComputeBuffer voxelBuffer, int voxelsPerAxis, float chunkSize, Vector3 worldSize, Vector3 chunkCentre, float voxelSpacing, NoiseType NoiseType)
     {
         //find the compute shader kernel
         int kernel = DensityShader.FindKernel("NoiseDensity");
@@ -159,6 +159,7 @@ public class NoiseGenerator : MonoBehaviour
         DensityShader.SetFloat("voxelSpacing", voxelSpacing);
         DensityShader.SetFloat("chunkSize", chunkSize);
         DensityShader.SetVector("worldSize", worldSize);
+        DensityShader.SetInt("noiseType", (int)NoiseType);
 
         //set all remaining Noise Variables
         DensityShader.SetFloat("noiseScale", NoiseScale);

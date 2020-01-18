@@ -3,6 +3,12 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 
+public enum NoiseType
+{
+    Perlin,
+    Simplex,
+}
+
 //[ExecuteInEditMode]
 public class TerrainGeneration : MonoBehaviour
 {
@@ -30,6 +36,8 @@ public class TerrainGeneration : MonoBehaviour
 
 
     [Header("Style")]
+    [ConditionalHide(nameof(UseGPU), true)]
+    public NoiseType noiseType = NoiseType.Perlin;
     [ConditionalHide(nameof(UseGPU),true, true)]
     public bool Voxelated;
     [ConditionalHide(nameof(Voxelated), true)]
@@ -425,7 +433,7 @@ public class TerrainGeneration : MonoBehaviour
         Vector3 worldSize = new Vector3(NumOfChunks.x, NumOfChunks.y, NumOfChunks.z) * ChunkSize;
 
         //generate the noise
-        noiseGenerator.Generate(voxelBuffer, VoxelsPerAxis, ChunkSize, worldSize, chunkCentre, voxelSpacing);
+        noiseGenerator.Generate(voxelBuffer, VoxelsPerAxis, ChunkSize, worldSize, chunkCentre, voxelSpacing, noiseType);
         //generate the mesh points
         MarchingCubes.UpdateTerrainGPU(MarchingCubesCompute, voxelBuffer, triangleBuffer, VoxelsPerAxis, ISOValue);
 
