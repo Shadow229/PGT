@@ -9,8 +9,6 @@ struct Triangle
 	float3 vertexC;
 	float3 vertexB;
 	float3 vertexA;
-
-	//float3 normal;
 };
 
 AppendStructuredBuffer<Triangle> triangles;
@@ -61,7 +59,7 @@ void CubeMarch(uint3 id : SV_DispatchThreadID)
 	if (cubeCorners[6].w < ISOValue) cubeIndex |= 64;
 	if (cubeCorners[7].w < ISOValue) cubeIndex |= 128;
 
-	// Create triangles for current cube configuration
+
 	for (int i = 0; triangulation[cubeIndex][i] != -1; i += 3) {
 		// Get indices of corner points A and B for each of the three edges
 		// of the cube that need to be joined to form the triangle.
@@ -74,11 +72,11 @@ void CubeMarch(uint3 id : SV_DispatchThreadID)
 		int a2 = cornerIndexAFromEdge[triangulation[cubeIndex][i + 2]];
 		int b2 = cornerIndexBFromEdge[triangulation[cubeIndex][i + 2]];
 
+	// Create triangles for current cube configuration
 		Triangle tri;
 		tri.vertexA = interpolateVerts(cubeCorners[a0], cubeCorners[b0]);
 		tri.vertexB = interpolateVerts(cubeCorners[a1], cubeCorners[b1]);
 		tri.vertexC = interpolateVerts(cubeCorners[a2], cubeCorners[b2]);
-	//	tri.normal = float3(0,0,0);
 
 		triangles.Append(tri);
 

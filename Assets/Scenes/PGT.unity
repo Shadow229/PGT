@@ -290,7 +290,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa28828984428b64093c95f3061bbfe0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GeneratePlayer: 0
+  GeneratePlayer: 1
   rotateSpeed: 5
   movementSpeed: 1000
   angDrag: 10
@@ -358,16 +358,17 @@ MonoBehaviour:
   UseGPU: 1
   MarchingCubesCompute: {fileID: 7200000, guid: dcea932fb1c5bf340b9924d73a2edade,
     type: 3}
-  FixedMapSize: 1
+  FixedMapSize: 0
   VerticalVisibility: 1
-  NumOfChunks: {x: 5, y: 1, z: 5}
+  NumOfChunks: {x: 2, y: 1, z: 2}
   GenerateCollisions: 1
   ChunkSize: 10
   showChunks: 1
   material: {fileID: 2100000, guid: 4d8d21695a014004eb7882f8570edf4b, type: 2}
+  noiseType: 1
   Voxelated: 0
   VoxelDepth: 1
-  VoxelsPerAxis: 40
+  VoxelsPerAxis: 20
   ISOValue: 8
   noiseGenerator: {fileID: 817408918}
   Chunks:
@@ -475,19 +476,19 @@ MonoBehaviour:
     serializedVersion: 2
     key0: {r: 0.11139195, g: 0.09638661, b: 0.3584906, a: 1}
     key1: {r: 0.15690637, g: 0.6920336, b: 0.8113208, a: 1}
-    key2: {r: 0.80678177, g: 0.9027789, b: 0.9245283, a: 0}
+    key2: {r: 0.7092827, g: 0.8890263, b: 0.9339623, a: 0}
     key3: {r: 0.8584906, g: 0.80945295, b: 0.26321647, a: 0}
     key4: {r: 0.5566038, g: 0.54345673, b: 0.3964489, a: 0}
     key5: {r: 0.034665354, g: 0.38679248, b: 0.08043386, a: 0}
     key6: {r: 0.07231222, g: 0.23584908, b: 0.093278475, a: 0}
     key7: {r: 1, g: 1, b: 1, a: 0}
-    ctime0: 0
-    ctime1: 18504
+    ctime0: 8096
+    ctime1: 20239
     ctime2: 21395
     ctime3: 22937
     ctime4: 26214
     ctime5: 32575
-    ctime6: 57632
+    ctime6: 49730
     ctime7: 65535
     atime0: 0
     atime1: 65535
@@ -500,7 +501,7 @@ MonoBehaviour:
     m_Mode: 0
     m_NumColorKeys: 8
     m_NumAlphaKeys: 2
-  TextureStretch: {x: 0.57, y: 5.27}
+  TextureStretch: {x: 7.8, y: 7.9}
 --- !u!1 &1184782273
 GameObject:
   m_ObjectHideFlags: 0

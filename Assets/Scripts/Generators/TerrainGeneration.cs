@@ -292,10 +292,15 @@ public class TerrainGeneration : MonoBehaviour
                             if (recycleableChunks.Count > 0)
                             {
                                 Chunk chunk = recycleableChunks.Dequeue();
-                                chunk.name = $"Chunk ({v3Coord.x}, {v3Coord.y}, {v3Coord.z})";
-                                chunk.Pos = v3Coord;
-                                ExistingChunks.Add(v3Coord, chunk);
-                                Chunks.Add(chunk);
+
+                                if(chunk)
+                                {
+                                    chunk.name = $"Chunk ({v3Coord.x}, {v3Coord.y}, {v3Coord.z})";
+                                    chunk.Pos = v3Coord;
+                                    ExistingChunks.Add(v3Coord, chunk);
+                                    Chunks.Add(chunk);
+                                }
+
                             }
                             else
                             {

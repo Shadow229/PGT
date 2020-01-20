@@ -76,12 +76,15 @@ void NoiseDensity(uint3 id : SV_DispatchThreadID)
 
 	float finalVal = -(pos.y + floorOffset) + (noise * noiseWeight);
 
+	//add in the hard floor
 	if (pos.y < hardFloor) 
 	{
 		finalVal += hardFloorWeight;
 	}
 
 	int index = indexFromCoord(id.x, id.y, id.z);
+
+	//set the point
 	voxelPoints[index] = float4(pos, finalVal);
 
 }
